@@ -32,3 +32,11 @@ class Mutation(graphene.ObjectType):
     update_low_stock_products = UpdateLowStockProducts.Field()
 
 schema = graphene.Schema(mutation=Mutation)
+INSTALLED_APPS = [
+    # ...
+    "django_crontab",
+]
+
+CRONJOBS = [
+    ('0 */12 * * *', 'crm.cron.update_low_stock'),
+]
