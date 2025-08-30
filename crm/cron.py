@@ -2,18 +2,12 @@ from datetime import datetime
 from gql import gql, Client
 from gql.transport.requests import RequestsHTTPTransport
 
-LOG_FILE = "/tmp/crm_heartbeat_log.txt"
+LOW_STOCK_LOG = "/tmp/low_stock_updates_log.txt"
 
-def log_crm_heartbeat():
-    """Log a heartbeat message and check GraphQL hello field."""
+def update_low_stock():
+    """Run GraphQL mutation to restock low-stock products and log results."""
     timestamp = datetime.now().strftime("%d/%m/%Y-%H:%M:%S")
-    message = f"{timestamp} CRM is alive\n"
 
-    # append to log file
-    with open(LOG_FILE, "a") as f:
-        f.write(message)
-
-    # تحقق من GraphQL hello field
     try:
         transport = RequestsHTTPTransport(
             url="http://localhost:8000/graphql",
@@ -21,8 +15,31 @@ def log_crm_heartbeat():
             retries=3,
         )
         client = Client(transport=transport, fetch_schema_from_transport=True)
-        query = gql("{ hello }")
-        result = client.execute(query)
-        print(f"{timestamp} GraphQL hello: {result.get('hello')}")
+
+        mutation = gql(
+            """
+            mutation {
+                updateLowStockProducts {
+                    success
+                    products {
+                        name
+                        stock
+                    }
+                }
+            }
+            """
+        )
+
+        result = client.execute(mutation)
+        updates = result["updateLowStockProducts"]["products"]
+
+        with open(LOW_STOCK_LOG, "a") as f:
+            for p in updates:
+                f.write(f"{timestamp} - {p['name']} restocked to {p['stock']}\n")
+
+        print("Low stock update processed!")
+
     except Exception as e:
-        print(f"{timestamp} GraphQL request failed: {e}")
+        with open(LOW_STOCK_LOG, "a") as f:
+            f.write(f"{timestamp} - Error: {e}\n")
+        print(f"Error: {e}")
