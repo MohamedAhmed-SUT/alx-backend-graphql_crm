@@ -2,3 +2,5 @@ Django
 django-crontab
 gql
 requests
+celery
+django-celery-beat
